@@ -157,7 +157,7 @@ import calendar
 from configobj import ConfigObj
 
 # Default settings...
-DRIVER_VERSION = "1.13"
+DRIVER_VERSION = "1.14"
 HARDWARE_NAME = "WeatherFlow"
 DRIVER_NAME = 'WeatherFlowUDP'
 
