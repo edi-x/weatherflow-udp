@@ -300,21 +300,23 @@ def getObservationsUrl(start, end, token, device_id):
 
 def getStationDevices(token):
     if not token:
-        return dict(), dict()
+        return dict(), dict(), dict()
     response = requests.get(getStationsUrl(token))
     if (response.status_code != 200):
         raise DriverException("Could not fetch station information from WeatherFlow webservice: {}".format(response))
     stations = response.json()["stations"]
     device_id_dict = dict()
     device_dict = dict()
+    device_type_dict = dict()
     for station in stations:
         for device in station["devices"]:
             if 'serial_number' in device:
                 device_id_dict.update({device["device_id"]:device["serial_number"]})
                 device_dict.update({device["serial_number"]:device["device_id"]})
-    return device_id_dict, device_dict
+                device_type_dict.update({device["serial_number"]:'device_type' in device and device['device_type'] or None})
+    return device_id_dict, device_dict, device_type_dict
 
-def readDataFromWF(start, token, devices, device_dict, batch_size):
+def readDataFromWF(start, token, devices, device_dict, device_type_dict, batch_size):
     isFinished = False
     while not isFinished: # end > calendar.timegm(datetime.utcnow().utctimetuple()):
         end = start + batch_size - 1
@@ -323,10 +325,13 @@ def readDataFromWF(start, token, devices, device_dict, batch_size):
         results = list()
         timestamps = None
         for device in devices:
+            if device_type_dict[device] in ['HB', None]:
+                continue
             logdbg('Reading for {} from {} to {}'.format(device, datetime.utcfromtimestamp(start), datetime.utcfromtimestamp(lastTimestamp or end)))
-            response = requests.get(getObservationsUrl(start, lastTimestamp or end, token, device_dict[device]))
+            url = getObservationsUrl(start, lastTimestamp or end, token, device_dict[device])
+            response = requests.get(url)
             if (response.status_code != 200):
-                raise DriverException("Could not fetch records from WeatherFlow webservice: {}".format(response))
+                raise DriverException("Could not fetch records from WeatherFlow webservice: {} Url: {}".format(response, url))
             jsonResponse = response.json()
             if lastTimestamp == None and jsonResponse['obs'] != None:
                 lastTimestamp = sorted(jsonResponse['obs'], key = lambda i: i[0], reverse = True)[0][0]
@@ -551,7 +556,7 @@ class WeatherFlowUDPDriver(weewx.drivers.AbstractDevice):
         self._sensor_map = stn_dict.get('sensor_map', None)
         self._token = stn_dict.get('token', '')
         self._batch_size = int(stn_dict.get('batch_size', 24 * 60 * 60))
-        self._device_id_dict, self._device_dict = getStationDevices(self._token)
+        self._device_id_dict, self._device_dict, self._device_type_dict = getStationDevices(self._token)
         self._devices = getDevices(stn_dict.get('devices', list(self._device_dict.keys())), self._device_dict.keys(), self._token)
         self._rest_enabled = tobool(stn_dict.get('rest_enabled', True))
         self._archive_interval = int(std_dict.get('archive_interval', 60))
@@ -617,7 +622,7 @@ class WeatherFlowUDPDriver(weewx.drivers.AbstractDevice):
 
         if self._token != "" and self._rest_enabled:
             loginf('Reading from {}'.format(datetime.utcfromtimestamp(since_ts)))
-            for packet in readDataFromWF(since_ts + 1, self._token, self._devices, self._device_dict, self._batch_size):
+            for packet in readDataFromWF(since_ts + 1, self._token, self._devices, self._device_dict, self._device_type_dict, self._batch_size):
                 for observation in parseRestPacket(packet, self._device_id_dict, self._calculator):
                     m3 = mapToWeewxPacket(observation, self._sensor_map, True, int((self._archive_interval + 59) / 60))
                     if len(m3) > 3:
@@ -783,7 +788,7 @@ if __name__ == '__main__':
             print('Please provide an API token with the --token=TOKEN option')
             exit(1)
         try:
-            device_id_dict, device_dict = getStationDevices(options.token)
+            device_id_dict, device_dict, _ = getStationDevices(options.token)
             devicesList = [s.strip() for s in options.devices.split(',')] if ',' in options.devices else options.devices if len(options.devices) > 0 else list(device_dict.keys())
             devices = getDevices(devicesList, device_dict.keys(), options.token, True)
             sensor_map = getSensorMap(devices, device_id_dict, True)
