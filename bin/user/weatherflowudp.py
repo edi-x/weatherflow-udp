@@ -438,8 +438,9 @@ def getStationDevices(token, request_timeout):
     for station in stations:
         for device in station["devices"]:
             if 'serial_number' in device:
-                device_id_dict.update({device["device_id"]:device["serial_number"]})
-                device_dict.update({device["serial_number"]:device["device_id"]})
+                if device['device_type']=='ST': 
+                    device_id_dict.update({device["device_id"]:device["serial_number"]})
+                    device_dict.update({device["serial_number"]:device["device_id"]})
     return device_id_dict, device_dict
 
 def readDataFromWF(start, stop, token, devices, device_dict, batch_size, request_timeout, min_expected_observation_count, max_retry_count):
