@@ -438,7 +438,7 @@ def getStationDevices(token, request_timeout):
     for station in stations:
         for device in station["devices"]:
             if 'serial_number' in device:
-                if device['device_type']=='ST': 
+                if device['device_type']!='HB': # skip Hub devices since they don't have observations
                     device_id_dict.update({device["device_id"]:device["serial_number"]})
                     device_dict.update({device["serial_number"]:device["device_id"]})
     return device_id_dict, device_dict
