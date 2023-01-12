@@ -478,7 +478,7 @@ def readDataFromWF(start, stop, token, devices, device_dict, batch_size, request
                             time.sleep(10)
 
                     # skip this station if it's not valid
-                    if (response.status_code == 500): break
+                    if (response.status_code == 500): continue
                       
                     if (response.status_code != 200):
                         raise DriverException("Could not fetch records from WeatherFlow webservice: {}".format(response))
