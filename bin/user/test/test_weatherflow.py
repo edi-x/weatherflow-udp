@@ -30,7 +30,7 @@ class Test(unittest.TestCase):
             stn_dict = self.config_dict['WeatherFlowUDP']
             self.request_timeout = float(stn_dict.get('request_timeout', 30))
             self.token = stn_dict.get('token', '')
-            self.device_id_dict, self.device_dict = weatherflowudp.getStationDevices(self.token, self.request_timeout)
+            self.device_id_dict, self.device_dict, self.device_type_dict = weatherflowudp.getStationDevices(self.token, self.request_timeout)
             self.devices = weatherflowudp.getDevices(stn_dict.get('devices', list(self.device_dict.keys())), self.device_dict.keys(), self.token)
         
         except IOError:
@@ -138,7 +138,7 @@ class Test(unittest.TestCase):
             pass
         
     def testRESTData(self):
-        for packet in weatherflowudp.readDataFromWF(1650805200, 1650805800, self.token, self.devices, self.device_dict, (24 * 60 * 60), 20, 1, 0):
+        for packet in weatherflowudp.readDataFromWF(1650805200, 1650805800, self.token, self.devices, self.device_dict, self.device_type_dict, (24 * 60 * 60), 20, 1, 0):
             for archive_record in self.driver.convertREST2weewx(packet):
                     print(packet)
             
@@ -176,7 +176,7 @@ class TestConsole(object):
             self.archive_interval = int(test_instance.config_dict['StdArchive']['archive_interval'])
             self._request_timeout = 30
             self._token = test_instance.config_dict['WeatherFlowUDP']['token']
-            self._device_id_dict, self._device_dict = getStationDevices(self._token, self._request_timeout)
+            self._device_id_dict, self._device_dict, self.device_type_dict = getStationDevices(self._token, self._request_timeout)
         except KeyError:
             self.archive_interval = 300
         self.test_instance = test_instance    
