@@ -141,6 +141,11 @@ class Test(unittest.TestCase):
         for packet in weatherflowudp.readDataFromWF(1650805200, 1650805800, self.token, self.devices, self.device_dict, self.device_type_dict, (24 * 60 * 60), 20, 1, 0):
             for archive_record in self.driver.convertREST2weewx(packet):
                     print(packet)
+                    
+    def testXGenStartupRecords(self):
+        for record in (self.driver.genStartupRecords(int(time.time()) - 300)):
+            print(record)
+    
             
 class TestArchive(StdArchive):
     """Service that archives LOOP and archive data in the SQL databases."""

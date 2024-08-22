@@ -860,12 +860,31 @@ class WeatherFlowUDPDriver(weewx.drivers.AbstractDevice):
     def genStartupRecords(self, since_ts):
         if since_ts == None:
             since_ts = int(time.time()) - 365 * 24 * 60 * 60
-
+        
+        expected_observation_count = 1
+        max_retry_count = 6 # start with 6 retries to give hub some time to deliver data after a power loss
+        finished = False
+        
         if self._token != "" and self._rest_enabled:
             loginf('Reading from {}'.format(datetime.utcfromtimestamp(since_ts)))
-            for packet in readDataFromWF(since_ts + 1, None, self._token, self._devices, self._device_dict, self._device_type_dict, self._batch_size, self._request_timeout, 0, 0):
-                for archive_record in self.convertREST2weewx(packet):
-                    yield archive_record
+            while(not finished):
+                try:
+                    for packet in readDataFromWF(since_ts + 1, None, self._token, self._devices, self._device_dict, self._device_type_dict, self._batch_size, self._request_timeout, expected_observation_count, max_retry_count):
+                        for archive_record in self.convertREST2weewx(packet):
+                            since_ts = archive_record['dateTime']
+                            if (since_ts < int(time.time())): # do not archive incomplete values for the future - move forward to the loop instead.
+                                yield archive_record
+                    finished = True
+                except IncompleteDataException:
+                    since_ts += self._archive_interval #try getting data for next interval
+                    if (max_retry_count > 0):
+                        max_retry_count -= 2 #reduce number of retries with each failure
+                    else:
+                        # data seems to be missing - try to process everything that's available to get ready for the loop
+                        expected_observation_count = 0
+                    if (since_ts > int(time.time())):
+                        finished = True
+            
         else:
             loginf('Skipped fetching from REST API')
             
