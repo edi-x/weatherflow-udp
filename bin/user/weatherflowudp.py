@@ -344,7 +344,7 @@ def mapToWeewxPacket(pkt, sensor_map, isRest, interval = 1, generateRainRate = F
                 packet[pkt_weewx] = pkt[label.replace("-","_")]
     
     #add rainRate value
-    if generateRainRate and 'rain' in packet:
+    if generateRainRate and 'rain' in packet and packet['rain'] is not None:
         packet['rainRate'] = packet['rain'] * 60
 
     #add lightningPerTimestampJson
